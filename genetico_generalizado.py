@@ -6,15 +6,7 @@ import numpy as np
 import random
 import re
 import itertools
-from collections import defaultdict, Counter
 
-from sympy import symbols, simplify_logic
-from sympy.parsing.sympy_parser import (
-    parse_expr,
-    standard_transformations,
-    implicit_multiplication_application,
-    convert_xor
-)
 
 
 
@@ -77,56 +69,6 @@ class NeuralNetwork:
             self.backward(X, Y, learning_rate)
             if print_loss and i % 1000 == 0:
                 print(f"Época {i}, Costo: {loss:.4f}")
-
-
-
-
-
-def simplify_logical_expression(expr_str, form='dnf'):
-    """
-    Simplifica una expresión booleana en sintaxis Python (and, or, not, xor)
-    a DNF o CNF usando Sympy, evaluando con operadores bitwise.
-
-    Args:
-        expr_str (str): Expresión booleana en sintaxis Python.
-        form (str): 'dnf' o 'cnf'.
-    Returns:
-        str: Expresión simplificada en sintaxis Python.
-    """
-    # 1) Crear símbolos y mapa local
-    syms = symbols(' '.join(VARIABLES_INICIALES))
-    sym_map = dict(zip(VARIABLES_INICIALES, syms))
-
-    # 2) Convertir expr_str a cadena y reemplazar keywords por bitwise
-    s = str(expr_str)
-    s = re.sub(r'\bnot\b', '~', s)
-    s = re.sub(r'\band\b', '&', s)
-    s = re.sub(r'\bor\b', '|', s)
-    s = re.sub(r'\bxor\b', '^', s)
-
-    # 3) Evaluar directamente con eval usando símbolos
-    try:
-        expr = eval(s, {}, sym_map)
-    except Exception as e:
-        raise ValueError(f"Error al evaluar expresión: {e}")
-
-    # 4) Simplificar la expresión booleana
-    simplified = simplify_logic(expr, form=form)
-
-    # 5) Reconstruir sintaxis Python legible
-    out = str(simplified)
-    out = out.replace('~', 'not ')
-    out = out.replace('&', ' and ')
-    out = out.replace('|', ' or ')
-    out = out.replace('^', ' xor ')
-    out = re.sub(r'\s+', ' ', out).strip()
-    return out
-
-
-
-
-
-
 
 
 def f1(*args):
@@ -374,7 +316,7 @@ def mutation(ind, inc_rate=0.3, dec_rate=0.3, comb_rate = 0.3):
 # --- Algoritmo genético principal ---
 def genetic_algorithm(X, Y,
                       population_size=300, num_generations=100,
-                      min_weight=SAMPLE_SIZE/2, max_weight=SAMPLE_SIZE - 1, 
+                      min_weight=SAMPLE_SIZE/4, max_weight=SAMPLE_SIZE - 0.5, 
                       total_weight=SAMPLE_SIZE):
     
     max_dim = len(VARIABLES_INICIALES) + 2
@@ -384,17 +326,18 @@ def genetic_algorithm(X, Y,
 
     best_ind, best_fit = None, float('inf')
     
-    cont = 0
+    cont = 0 #generaciones extra
     gen = 0
-    while gen < num_generations:
-        frac = gen / num_generations
+    while gen <= num_generations: #gen llega hasta 100
+        frac = gen  / num_generations #maximo = 1
         dimension_weight = min_weight + (max_weight - min_weight) * frac
         
         other_weight = total_weight - dimension_weight
-        conservativity_weight = 0.99 * other_weight
+        conservativity_weight = 0.97 * other_weight
+        abstraction_weight = 0.02 * other_weight
         size_weight = 0.01 * other_weight
         
-        fits = [fitness(ind,evaluate_expressions(ind, X), Y, dimension_weight, size_weight, conservativity_weight)
+        fits = [fitness(ind,evaluate_expressions(ind, X), Y, dimension_weight, size_weight, abstraction_weight, conservativity_weight)
                 for ind in population]
 
       
@@ -407,8 +350,7 @@ def genetic_algorithm(X, Y,
         new_pop = []
         elite_n = max(1, population_size//10)
         elite_idx = np.argsort(fits)[:elite_n]
-        counter_better = 0
-        total_offspring = 0
+
         for i in elite_idx:
             new_pop.append(population[i])
         while len(new_pop) < population_size:
@@ -422,12 +364,11 @@ def genetic_algorithm(X, Y,
         population = new_pop
         gen +=1
 
-        if gen == num_generations -1 and len(best_ind) != 1:
+        if gen == num_generations+1 and len(best_ind) != 1:
             gen-=1
             cont+=1     
         print(dimension_weight, size_weight, conservativity_weight)
     return best_ind, best_fit
-
 
 # --- Ejecución de ejemplo con red neuronal ---
 if __name__ == "__main__":
@@ -443,7 +384,7 @@ if __name__ == "__main__":
     print(Y)
     
     best, score = genetic_algorithm(X, Y)
-    print("\nMejor individuo:", simplify_logical_expression(best[0]))
+    print("\nMejor individuo:", best[0])
     print("Fitness final:", score)
     
     

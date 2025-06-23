@@ -62,8 +62,6 @@ class NeuralNetwork:
     def train(self, X, Y, epochs, learning_rate, print_loss=False):
         """Entrenamiento de la red neuronal."""
         for i in range(epochs):
-            A2 = self.forward(X)
-            loss = self.compute_loss(Y, A2)
             self.backward(X, Y, learning_rate)
 
 
